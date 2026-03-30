@@ -56,7 +56,7 @@ export default function TradingPage() {
       // 静默登录：用 Telegram initData 换取 Supabase session
       console.log("[debug] initData:", window.Telegram?.WebApp?.initData);
       const initData = window.Telegram?.WebApp?.initData;
-      if (initData) {
+      if (initData && initData.length > 0) {
         const { data, error } = await supabase.functions.invoke("tg-auth", {
           body: { initData },
         });
@@ -65,6 +65,21 @@ export default function TradingPage() {
             access_token: data.access_token,
             refresh_token: data.refresh_token ?? "",
           });
+        }
+      } else {
+        // 没有 initData，说明不在 Telegram 里或者 SDK 还没加载完
+        // 尝试用 tg_id 直接静默登录（开发模式或 SDK 加载延迟）
+        const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (tgId) {
+          const { data, error } = await supabase.functions.invoke("tg-auth", {
+            body: { initData: `user=%7B%22id%22%3A${tgId}%7D` },
+          });
+          if (!error && data?.access_token) {
+            await supabase.auth.setSession({
+              access_token: data.access_token,
+              refresh_token: data.refresh_token ?? "",
+            });
+          }
         }
       }
 
