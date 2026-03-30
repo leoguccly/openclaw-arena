@@ -41,6 +41,7 @@ export default function TradingPage() {
   const [showPoster, setShowPoster] = useState<boolean>(false);
   const [lastClosedTrade, setLastClosedTrade] = useState<Trade | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
+  const [accessToken, setAccessToken] = useState<string>("");
 
   const SPARKLINE_MAX_POINTS = 50;
 
@@ -65,6 +66,7 @@ export default function TradingPage() {
             access_token: data.access_token,
             refresh_token: data.refresh_token ?? "",
           });
+          setAccessToken(data.access_token);
         }
       } else {
         // 没有 initData，说明不在 Telegram 里或者 SDK 还没加载完
@@ -79,6 +81,7 @@ export default function TradingPage() {
               access_token: data.access_token,
               refresh_token: data.refresh_token ?? "",
             });
+            setAccessToken(data.access_token);
           }
         }
       }
@@ -193,6 +196,7 @@ export default function TradingPage() {
     try {
       const res = await supabase.functions.invoke("execute-trade", {
         body: { symbol, direction, leverage, margin: marginNum },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (res.error) {
@@ -223,6 +227,7 @@ export default function TradingPage() {
     try {
       const res = await supabase.functions.invoke("close-trade", {
         body: { trade_id: openTrade.id },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (res.error) {
