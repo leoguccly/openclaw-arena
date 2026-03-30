@@ -116,38 +116,7 @@ function validateRequest(body: unknown): {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Trade math
-// ---------------------------------------------------------------------------
-
-/**
- * Liquidation price: the price at which the entire margin is lost.
- *
- * Long:  entry * (1 - 1/leverage)
- * Short: entry * (1 + 1/leverage)
- */
-function computeLiquidationPrice(
-  entryPrice: number,
-  direction: "long" | "short",
-  leverage: number
-): number {
-  if (direction === "long") {
-    return entryPrice * (1 - 1 / leverage);
-  }
-  return entryPrice * (1 + 1 / leverage);
-}
-
-/**
- * Notional quantity of base currency controlled by this position.
- * quantity = (margin * leverage) / entry_price
- */
-function computeQuantity(
-  margin: number,
-  leverage: number,
-  entryPrice: number
-): number {
-  return (margin * leverage) / entryPrice;
-}
+// Trade math is imported from _shared/trade-math.ts (line 7)
 
 // ---------------------------------------------------------------------------
 // Handler
