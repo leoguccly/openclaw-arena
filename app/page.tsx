@@ -156,21 +156,35 @@ export default function TradingPage() {
     if (!accessToken) return; // Wait for tg-auth to complete
 
     async function loadUserData() {
-      const { data: userData } = await supabase
+      // Create an authenticated client with the user's JWT
+      const { createClient } = await import("@supabase/supabase-js");
+      const authClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+        { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
+      );
+
+      const { data: userData, error: userError } = await authClient
         .from("users")
         .select("balance, roi")
         .single();
+
+      console.log("[loadUserData] user query:", userData ? "OK" : userError?.message);
+
       if (userData) {
         setBalance(parseFloat(String(userData.balance)));
         setRoi(parseFloat(String(userData.roi)));
       }
 
       // Check for ANY open trade (regardless of current symbol selection)
-      const { data: allOpenTrades } = await supabase
+      const { data: allOpenTrades, error: tradeError } = await authClient
         .from("trades")
         .select("*")
         .eq("status", "open")
         .limit(1);
+
+      console.log("[loadUserData] trades query:", allOpenTrades?.length ?? 0, "open trades", tradeError?.message ?? "");
+
       if (allOpenTrades && allOpenTrades.length > 0) {
         const trade = allOpenTrades[0] as Trade;
         setOpenTrade(trade);
