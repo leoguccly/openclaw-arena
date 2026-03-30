@@ -42,7 +42,7 @@ export default function TradingPage() {
   const [lastClosedTrade, setLastClosedTrade] = useState<Trade | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [accessToken, setAccessToken] = useState<string>("");
-  const [debugInfo, setDebugInfo] = useState<string>("waiting...");
+  const [debugInfo, setDebugInfo] = useState<string>("");
   const [showAddMargin, setShowAddMargin] = useState(false);
   const [addMarginAmount, setAddMarginAmount] = useState("");
   const [addMarginLoading, setAddMarginLoading] = useState(false);
@@ -386,11 +386,6 @@ export default function TradingPage() {
           </a>
         </div>
       </header>
-
-      {/* DEBUG — remove after fixing */}
-      <div className="arena-card px-3 py-2 mb-2 text-xs text-zinc-500 font-mono break-all">
-        {debugInfo}
-      </div>
 
       {/* ── OpenClaw Status Widget ── */}
       <OpenClawWidget />
