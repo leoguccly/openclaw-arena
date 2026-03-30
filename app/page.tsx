@@ -42,6 +42,7 @@ export default function TradingPage() {
   const [lastClosedTrade, setLastClosedTrade] = useState<Trade | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [accessToken, setAccessToken] = useState<string>("");
+  const [debugInfo, setDebugInfo] = useState<string>("waiting...");
   const [showAddMargin, setShowAddMargin] = useState(false);
   const [addMarginAmount, setAddMarginAmount] = useState("");
   const [addMarginLoading, setAddMarginLoading] = useState(false);
@@ -100,18 +101,21 @@ export default function TradingPage() {
         };
 
         // 加载用户余额
+        let dbg = `token=${token.slice(0,10)}... `;
         try {
           const userRes = await fetch(
             `${baseUrl}/rest/v1/users?select=balance,roi&limit=1`,
             { headers }
           );
           const userData = await userRes.json();
+          dbg += `userHTTP=${userRes.status} rows=${Array.isArray(userData) ? userData.length : 'N/A'} `;
           if (Array.isArray(userData) && userData.length > 0) {
             setBalance(parseFloat(String(userData[0].balance)));
             setRoi(parseFloat(String(userData[0].roi)));
+            dbg += `bal=${userData[0].balance} `;
           }
         } catch (e) {
-          console.error("[init] Failed to load user data:", e);
+          dbg += `userERR=${e} `;
         }
 
         // 加载 open trades
@@ -121,12 +125,14 @@ export default function TradingPage() {
             { headers }
           );
           const trades = await tradeRes.json();
+          dbg += `tradeHTTP=${tradeRes.status} rows=${Array.isArray(trades) ? trades.length : 'N/A'}`;
           if (Array.isArray(trades) && trades.length > 0) {
             setOpenTrade(trades[0] as Trade);
           }
         } catch (e) {
-          console.error("[init] Failed to load trades:", e);
+          dbg += `tradeERR=${e}`;
         }
+        setDebugInfo(dbg);
       }
 
       // Haptic feedback on load
@@ -380,6 +386,11 @@ export default function TradingPage() {
           </a>
         </div>
       </header>
+
+      {/* DEBUG — remove after fixing */}
+      <div className="arena-card px-3 py-2 mb-2 text-xs text-zinc-500 font-mono break-all">
+        {debugInfo}
+      </div>
 
       {/* ── OpenClaw Status Widget ── */}
       <OpenClawWidget />
