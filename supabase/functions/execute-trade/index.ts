@@ -117,6 +117,39 @@ function validateRequest(body: unknown): {
 }
 
 // ---------------------------------------------------------------------------
+// Trade math
+// ---------------------------------------------------------------------------
+
+/**
+ * Liquidation price: the price at which the entire margin is lost.
+ *
+ * Long:  entry * (1 - 1/leverage)
+ * Short: entry * (1 + 1/leverage)
+ */
+function computeLiquidationPrice(
+  entryPrice: number,
+  direction: "long" | "short",
+  leverage: number
+): number {
+  if (direction === "long") {
+    return entryPrice * (1 - 1 / leverage);
+  }
+  return entryPrice * (1 + 1 / leverage);
+}
+
+/**
+ * Notional quantity of base currency controlled by this position.
+ * quantity = (margin * leverage) / entry_price
+ */
+function computeQuantity(
+  margin: number,
+  leverage: number,
+  entryPrice: number
+): number {
+  return (margin * leverage) / entryPrice;
+}
+
+// ---------------------------------------------------------------------------
 // Handler
 // ---------------------------------------------------------------------------
 
@@ -297,14 +330,6 @@ serve(async (req: Request): Promise<Response> => {
     console.error("[execute-trade] RPC error:", rpcError);
     return new Response(
       JSON.stringify({ error: "An error occurred. Please try again." }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  if (!rpcResult || typeof (rpcResult as Record<string, unknown>).id !== "string") {
-    console.error("[execute-trade] Unexpected RPC result shape:", rpcResult);
-    return new Response(
-      JSON.stringify({ error: "An error occurred." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

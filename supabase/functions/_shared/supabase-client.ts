@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts";
-import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts";
+// @ts-ignore — Deno std lib resolved at runtime by Supabase Edge Functions
+import { encodeHex } from "https://deno.land/std@0.224.0/encoding/hex.ts";
 
 // ---------------------------------------------------------------------------
 // Admin client (service_role)

@@ -44,28 +44,45 @@ export default function TradingPage() {
 
   const SPARKLINE_MAX_POINTS = 50;
 
-  // --- Init TG Web App + referral code handling ---
+  // --- Init TG Web App + silent auth + referral code handling ---
   useEffect(() => {
-    const webapp = initTelegramWebApp();
-    const user = getTelegramUser();
-    if (user) {
-      setTgUser({ id: user.id, first_name: user.first_name });
-    }
-    // Haptic feedback on load
-    if (webapp) {
-      webapp.HapticFeedback?.impactOccurred("medium");
+    async function init() {
+      const webapp = initTelegramWebApp();
+      const user = getTelegramUser();
+      if (user) {
+        setTgUser({ id: user.id, first_name: user.first_name });
+      }
+
+      // 静默登录：用 Telegram initData 换取 Supabase session
+      const initData = window.Telegram?.WebApp?.initData;
+      if (initData) {
+        const { data, error } = await supabase.functions.invoke("tg-auth", {
+          body: { initData },
+        });
+        if (!error && data?.access_token) {
+          await supabase.auth.setSession({
+            access_token: data.access_token,
+            refresh_token: data.refresh_token ?? "",
+          });
+        }
+      }
+
+      // Haptic feedback on load
+      if (webapp) {
+        webapp.HapticFeedback?.impactOccurred("medium");
+      }
+
+      // 处理 referral
+      const startParam: string | undefined =
+        window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+      if (startParam && startParam.startsWith("ref_")) {
+        supabase.functions
+          .invoke("register-referral", { body: { referral_code: startParam } })
+          .catch(() => {});
+      }
     }
 
-    // Silently register referral if start_param begins with "ref_"
-    const startParam: string | undefined =
-      window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if (startParam && startParam.startsWith("ref_")) {
-      supabase.functions
-        .invoke("register-referral", { body: { referral_code: startParam } })
-        .catch(() => {
-          // Silently swallow — non-critical
-        });
-    }
+    init();
   }, []);
 
   // --- Real-time price via Binance WebSocket ---
