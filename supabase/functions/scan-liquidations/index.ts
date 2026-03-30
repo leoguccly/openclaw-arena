@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-client.ts";
-import { getServerSidePrice } from "../market-oracle/index.ts";
-import { checkPriceAlerts } from "../manage-price-alerts/index.ts";
+import { getServerSidePrice } from "../_shared/price-feed.ts";
+import { checkPriceAlerts } from "../_shared/check-price-alerts.ts";
 import { SYMBOL_TO_BINANCE } from "../_shared/symbols.ts";
 
 // ---------------------------------------------------------------------------

@@ -13,7 +13,7 @@
  */
 
 import { getSupabaseAdmin } from "./supabase-client.ts";
-import { getServerSidePrice } from "../market-oracle/index.ts";
+import { getServerSidePrice } from "./price-feed.ts";
 import {
   computeLiquidationPrice,
   computeQuantity,
