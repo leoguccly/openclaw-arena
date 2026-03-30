@@ -54,6 +54,7 @@ export default function TradingPage() {
       }
 
       // 静默登录：用 Telegram initData 换取 Supabase session
+      console.log("[debug] initData:", window.Telegram?.WebApp?.initData);
       const initData = window.Telegram?.WebApp?.initData;
       if (initData) {
         const { data, error } = await supabase.functions.invoke("tg-auth", {
