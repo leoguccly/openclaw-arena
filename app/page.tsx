@@ -42,7 +42,6 @@ export default function TradingPage() {
   const [lastClosedTrade, setLastClosedTrade] = useState<Trade | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [accessToken, setAccessToken] = useState<string>("");
-  const [authDebug, setAuthDebug] = useState<string>("loading...");
 
   const SPARKLINE_MAX_POINTS = 50;
 
@@ -56,10 +55,8 @@ export default function TradingPage() {
       }
 
       // 静默登录：用 Telegram initData 换取 Supabase session
-      console.log("[debug] initData:", window.Telegram?.WebApp?.initData);
       const initData = window.Telegram?.WebApp?.initData;
       if (initData && initData.length > 0) {
-        setAuthDebug(`initData found (${initData.length} chars), calling tg-auth...`);
         const { data, error } = await supabase.functions.invoke("tg-auth", {
           body: { initData },
         });
@@ -69,14 +66,10 @@ export default function TradingPage() {
             refresh_token: data.refresh_token ?? "",
           });
           setAccessToken(data.access_token);
-          setAuthDebug(`✅ Logged in (token: ${data.access_token.slice(0, 20)}...)`);
-        } else {
-          setAuthDebug(`❌ tg-auth failed: ${error?.message ?? JSON.stringify(data)}`);
         }
       } else {
         const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
         if (tgId) {
-          setAuthDebug(`No initData, using tgId fallback: ${tgId}`);
           const { data, error } = await supabase.functions.invoke("tg-auth", {
             body: { initData: `user=%7B%22id%22%3A${tgId}%7D` },
           });
@@ -86,12 +79,7 @@ export default function TradingPage() {
               refresh_token: data.refresh_token ?? "",
             });
             setAccessToken(data.access_token);
-            setAuthDebug(`✅ Logged in via fallback (token: ${data.access_token.slice(0, 20)}...)`);
-          } else {
-            setAuthDebug(`❌ Fallback tg-auth failed: ${error?.message ?? JSON.stringify(data)}`);
           }
-        } else {
-          setAuthDebug("❌ No initData and no tgId — not in Telegram?");
         }
       }
 
@@ -327,11 +315,6 @@ export default function TradingPage() {
           </a>
         </div>
       </header>
-
-      {/* ── Auth Debug (TEMPORARY — remove before production) ── */}
-      <div className="arena-card px-3 py-2 mb-2 text-xs text-zinc-500 font-mono break-all">
-        {authDebug}
-      </div>
 
       {/* ── OpenClaw Status Widget ── */}
       <OpenClawWidget />
