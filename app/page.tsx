@@ -42,6 +42,9 @@ export default function TradingPage() {
   const [lastClosedTrade, setLastClosedTrade] = useState<Trade | null>(null);
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [accessToken, setAccessToken] = useState<string>("");
+  const [showAddMargin, setShowAddMargin] = useState(false);
+  const [addMarginAmount, setAddMarginAmount] = useState("");
+  const [addMarginLoading, setAddMarginLoading] = useState(false);
 
   const SPARKLINE_MAX_POINTS = 50;
 
@@ -253,6 +256,44 @@ export default function TradingPage() {
     }
   }
 
+  // --- Add margin to open trade ---
+  async function handleAddMargin() {
+    if (!openTrade || addMarginLoading) return;
+    const amount = parseFloat(addMarginAmount);
+    if (isNaN(amount) || amount < 10) {
+      setError("Minimum additional margin is 10 USDT");
+      return;
+    }
+    if (amount > balance) {
+      setError("Insufficient balance");
+      return;
+    }
+    setAddMarginLoading(true);
+    setError("");
+    try {
+      const res = await supabase.functions.invoke("add-margin", {
+        body: { trade_id: openTrade.id, amount },
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.error) {
+        setError(res.error.message || "Failed to add margin");
+        return;
+      }
+      const updatedTrade = res.data?.data;
+      if (updatedTrade) {
+        setOpenTrade(updatedTrade as Trade);
+        setBalance((b) => b - amount);
+      }
+      setShowAddMargin(false);
+      setAddMarginAmount("");
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setAddMarginLoading(false);
+    }
+  }
+
   // --- Format helpers ---
   const fmtPrice = (p: number) =>
     p >= 1000 ? p.toLocaleString("en-US", { maximumFractionDigits: 2 }) : p.toFixed(4);
@@ -260,6 +301,12 @@ export default function TradingPage() {
   const fmtPercent = (r: number) => (r >= 0 ? `+${(r * 100).toFixed(2)}%` : `${(r * 100).toFixed(2)}%`);
 
   const isLong = direction === "long";
+
+  // Liquidation proximity warning
+  const liqProximity = openTrade && price
+    ? Math.abs(price - openTrade.liquidation_price) / price
+    : 1;
+  const isNearLiq = liqProximity < 0.10;
 
   return (
     <main className="flex flex-col min-h-screen px-4 pt-4 safe-bottom">
@@ -369,6 +416,14 @@ export default function TradingPage() {
             <Sparkline data={priceHistory} height={48} />
           </div>
         )}
+
+        {/* ── Entry / Liq reference when position is open ── */}
+        {openTrade && openTrade.status === "open" && (
+          <div className="flex justify-between items-center text-xs mt-2">
+            <span className="text-zinc-600">Entry: ${fmtPrice(openTrade.entry_price)}</span>
+            <span className="text-red-500/70">Liq: ${fmtPrice(openTrade.liquidation_price)}</span>
+          </div>
+        )}
       </div>
 
       {/* ── Open Position (if any) ── */}
@@ -420,8 +475,16 @@ export default function TradingPage() {
 
           <div className="flex justify-between items-center text-xs text-zinc-500 mb-4">
             <span>Margin: ${openTrade.margin}</span>
-            <span>Liq: ${fmtPrice(openTrade.liquidation_price)}</span>
+            <span className={isNearLiq ? "text-red-500 font-bold animate-pulse" : "text-zinc-500"}>
+              Liq: ${fmtPrice(openTrade.liquidation_price)}
+            </span>
           </div>
+
+          {isNearLiq && (
+            <div className="mb-3 text-red-500 text-xs font-bold animate-pulse text-center">
+              ⚠️ WARNING: Price is within {(liqProximity * 100).toFixed(1)}% of liquidation!
+            </div>
+          )}
 
           <div className="flex gap-2">
             <button
@@ -441,6 +504,15 @@ export default function TradingPage() {
                 ? "Position Liquidated"
                 : `Close Position (${fmtPnl(floatingPnl)})`}
             </button>
+            {/* Add margin button */}
+            <button
+              onClick={() => setShowAddMargin(!showAddMargin)}
+              disabled={openTrade.status === "liquidated"}
+              className="px-4 py-3 rounded-xl border border-arena-border text-zinc-400 hover:text-neon-green hover:border-neon-green transition-colors text-sm disabled:opacity-30"
+              title="Add margin"
+            >
+              💰
+            </button>
             {/* Generate battle report */}
             <button
               onClick={() => { setLastClosedTrade(openTrade); setShowPoster(true); }}
@@ -450,6 +522,27 @@ export default function TradingPage() {
               📸
             </button>
           </div>
+
+          {/* Add margin inline form */}
+          {showAddMargin && openTrade.status === "open" && (
+            <div className="mt-3 flex gap-2">
+              <input
+                type="number"
+                value={addMarginAmount}
+                onChange={(e) => setAddMarginAmount(e.target.value)}
+                placeholder="Amount (USDT)"
+                min={10}
+                className="flex-1 bg-arena-bg border border-arena-border rounded-xl px-3 py-2 text-white text-sm font-mono focus:outline-none focus:border-neon-green"
+              />
+              <button
+                onClick={handleAddMargin}
+                disabled={addMarginLoading}
+                className="px-4 py-2 rounded-xl bg-neon-green text-arena-bg font-bold text-sm active:scale-95 disabled:opacity-50"
+              >
+                {addMarginLoading ? "..." : "Add"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
