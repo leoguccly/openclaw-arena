@@ -89,31 +89,43 @@ export default function TradingPage() {
         }
       }
 
-      // 登录成功后立即加载用户数据（在同一个 async 函数里，保证顺序）
+      // 登录成功后立即加载用户数据（直接用 fetch + JWT，最可靠）
       if (token) {
-        const { createClient } = await import("@supabase/supabase-js");
-        const authClient = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-          { global: { headers: { Authorization: `Bearer ${token}` } } }
-        );
+        const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+        const headers = {
+          "apikey": anonKey ?? "",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
 
-        const { data: userData } = await authClient
-          .from("users")
-          .select("balance, roi")
-          .single();
-        if (userData) {
-          setBalance(parseFloat(String(userData.balance)));
-          setRoi(parseFloat(String(userData.roi)));
+        // 加载用户余额
+        try {
+          const userRes = await fetch(
+            `${baseUrl}/rest/v1/users?select=balance,roi&limit=1`,
+            { headers }
+          );
+          const userData = await userRes.json();
+          if (Array.isArray(userData) && userData.length > 0) {
+            setBalance(parseFloat(String(userData[0].balance)));
+            setRoi(parseFloat(String(userData[0].roi)));
+          }
+        } catch (e) {
+          console.error("[init] Failed to load user data:", e);
         }
 
-        const { data: openTrades } = await authClient
-          .from("trades")
-          .select("*")
-          .eq("status", "open")
-          .limit(1);
-        if (openTrades && openTrades.length > 0) {
-          setOpenTrade(openTrades[0] as Trade);
+        // 加载 open trades
+        try {
+          const tradeRes = await fetch(
+            `${baseUrl}/rest/v1/trades?select=*&status=eq.open&limit=1`,
+            { headers }
+          );
+          const trades = await tradeRes.json();
+          if (Array.isArray(trades) && trades.length > 0) {
+            setOpenTrade(trades[0] as Trade);
+          }
+        } catch (e) {
+          console.error("[init] Failed to load trades:", e);
         }
       }
 
