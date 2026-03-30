@@ -58,6 +58,7 @@ export default function TradingPage() {
       }
 
       // 静默登录：用 Telegram initData 换取 Supabase session
+      let token = "";
       const initData = window.Telegram?.WebApp?.initData;
       if (initData && initData.length > 0) {
         const { data, error } = await supabase.functions.invoke("tg-auth", {
@@ -68,7 +69,8 @@ export default function TradingPage() {
             access_token: data.access_token,
             refresh_token: data.refresh_token ?? "",
           });
-          setAccessToken(data.access_token);
+          token = data.access_token;
+          setAccessToken(token);
         }
       } else {
         const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
@@ -81,8 +83,37 @@ export default function TradingPage() {
               access_token: data.access_token,
               refresh_token: data.refresh_token ?? "",
             });
-            setAccessToken(data.access_token);
+            token = data.access_token;
+            setAccessToken(token);
           }
+        }
+      }
+
+      // 登录成功后立即加载用户数据（在同一个 async 函数里，保证顺序）
+      if (token) {
+        const { createClient } = await import("@supabase/supabase-js");
+        const authClient = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+          { global: { headers: { Authorization: `Bearer ${token}` } } }
+        );
+
+        const { data: userData } = await authClient
+          .from("users")
+          .select("balance, roi")
+          .single();
+        if (userData) {
+          setBalance(parseFloat(String(userData.balance)));
+          setRoi(parseFloat(String(userData.roi)));
+        }
+
+        const { data: openTrades } = await authClient
+          .from("trades")
+          .select("*")
+          .eq("status", "open")
+          .limit(1);
+        if (openTrades && openTrades.length > 0) {
+          setOpenTrade(openTrades[0] as Trade);
         }
       }
 
@@ -151,53 +182,7 @@ export default function TradingPage() {
     }
   }, [openTrade, price]);
 
-  // --- Fetch user data + open trades (only after auth is ready) ---
-  useEffect(() => {
-    if (!accessToken) return; // Wait for tg-auth to complete
-
-    async function loadUserData() {
-      // Create an authenticated client with the user's JWT
-      const { createClient } = await import("@supabase/supabase-js");
-      const authClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-        { global: { headers: { Authorization: `Bearer ${accessToken}` } } }
-      );
-
-      const { data: userData, error: userError } = await authClient
-        .from("users")
-        .select("balance, roi")
-        .single();
-
-      console.log("[loadUserData] user query:", userData ? "OK" : userError?.message);
-
-      if (userData) {
-        setBalance(parseFloat(String(userData.balance)));
-        setRoi(parseFloat(String(userData.roi)));
-      }
-
-      // Check for ANY open trade (regardless of current symbol selection)
-      const { data: allOpenTrades, error: tradeError } = await authClient
-        .from("trades")
-        .select("*")
-        .eq("status", "open")
-        .limit(1);
-
-      console.log("[loadUserData] trades query:", allOpenTrades?.length ?? 0, "open trades", tradeError?.message ?? "");
-
-      if (allOpenTrades && allOpenTrades.length > 0) {
-        const trade = allOpenTrades[0] as Trade;
-        setOpenTrade(trade);
-        // Auto-switch to the symbol of the open trade
-        if (trade.symbol !== symbol && SYMBOLS.includes(trade.symbol as Symbol)) {
-          setSymbol(trade.symbol as Symbol);
-        }
-      } else {
-        setOpenTrade(null);
-      }
-    }
-    loadUserData();
-  }, [accessToken, symbol]);
+  // User data is now loaded inside init() after auth completes
 
   // --- Execute trade ---
   async function handleOpenTrade() {
