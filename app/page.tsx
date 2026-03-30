@@ -151,8 +151,10 @@ export default function TradingPage() {
     }
   }, [openTrade, price]);
 
-  // --- Fetch user data + open trades ---
+  // --- Fetch user data + open trades (only after auth is ready) ---
   useEffect(() => {
+    if (!accessToken) return; // Wait for tg-auth to complete
+
     async function loadUserData() {
       const { data: userData } = await supabase
         .from("users")
@@ -163,20 +165,25 @@ export default function TradingPage() {
         setRoi(parseFloat(String(userData.roi)));
       }
 
-      const { data: trades } = await supabase
+      // Check for ANY open trade (regardless of current symbol selection)
+      const { data: allOpenTrades } = await supabase
         .from("trades")
         .select("*")
         .eq("status", "open")
-        .eq("symbol", symbol)
         .limit(1);
-      if (trades && trades.length > 0) {
-        setOpenTrade(trades[0] as Trade);
+      if (allOpenTrades && allOpenTrades.length > 0) {
+        const trade = allOpenTrades[0] as Trade;
+        setOpenTrade(trade);
+        // Auto-switch to the symbol of the open trade
+        if (trade.symbol !== symbol && SYMBOLS.includes(trade.symbol as Symbol)) {
+          setSymbol(trade.symbol as Symbol);
+        }
       } else {
         setOpenTrade(null);
       }
     }
     loadUserData();
-  }, [symbol]);
+  }, [accessToken, symbol]);
 
   // --- Execute trade ---
   async function handleOpenTrade() {
