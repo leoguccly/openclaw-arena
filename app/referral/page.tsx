@@ -2,7 +2,7 @@
 
 // ============================================================
 // Referral Page — Share your referral link, track referees,
-// and earn bonus USDT when they join Alpha Arena.
+// and earn free tournament entries when they join Alpha Arena.
 // ============================================================
 
 import { useEffect, useState, useCallback } from "react";
@@ -60,30 +60,58 @@ function ReferralLinkCard({
 }
 
 function StatsRow({
-  totalBonusEarned,
   totalReferrals,
 }: {
   totalBonusEarned: number;
   totalReferrals: number;
 }) {
+  // Reward tiers: 5 → 1 entry, 10 → 2 entries, 15 → 3 entries (cap)
+  const freeEntries = Math.min(3, Math.floor(totalReferrals / 5));
+  const nextTier = freeEntries < 3 ? (freeEntries + 1) * 5 : null;
+  const progressToNext = nextTier ? totalReferrals % 5 : 5;
+
   return (
-    <div className="grid grid-cols-2 gap-3 mb-4">
-      <div className="arena-card p-4 text-center">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
-          Bonus Earned
-        </p>
-        <p className="text-2xl font-bold text-neon-green text-glow-green">
-          ${totalBonusEarned.toFixed(2)}
-        </p>
-        <p className="text-xs text-zinc-600 mt-0.5">USDT</p>
+    <div className="mb-4">
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="arena-card p-4 text-center">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
+            Referrals
+          </p>
+          <p className="text-2xl font-bold text-white">{totalReferrals}</p>
+          <p className="text-xs text-zinc-600 mt-0.5">qualified</p>
+        </div>
+        <div className="arena-card p-4 text-center">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
+            Free Entries
+          </p>
+          <p className="text-2xl font-bold text-neon-green text-glow-green">
+            🎫 {freeEntries}
+          </p>
+          <p className="text-xs text-zinc-600 mt-0.5">of 3 max</p>
+        </div>
       </div>
-      <div className="arena-card p-4 text-center">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-1">
-          Total Referrals
-        </p>
-        <p className="text-2xl font-bold text-white">{totalReferrals}</p>
-        <p className="text-xs text-zinc-600 mt-0.5">traders</p>
-      </div>
+
+      {/* Progress to next tier */}
+      {nextTier && (
+        <div className="arena-card p-3">
+          <div className="flex justify-between text-xs text-zinc-500 mb-1.5">
+            <span>Next free entry at {nextTier} referrals</span>
+            <span>{progressToNext}/5</span>
+          </div>
+          <div className="w-full bg-arena-border rounded-full h-2">
+            <div
+              className="bg-neon-green rounded-full h-2 transition-all"
+              style={{ width: `${(progressToNext / 5) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {freeEntries >= 3 && (
+        <div className="arena-card p-3 text-center text-xs text-neon-green font-bold">
+          🏆 Maximum rewards reached!
+        </div>
+      )}
     </div>
   );
 }
@@ -132,7 +160,8 @@ export default function ReferralPage() {
       if (res.error) {
         setError(res.error.message || "Failed to load referral info.");
       } else {
-        setInfo(res.data as ReferralInfo);
+        const data = res.data?.data ?? res.data;
+        setInfo(data as ReferralInfo);
       }
     } catch {
       setError("Network error. Please try again.");
