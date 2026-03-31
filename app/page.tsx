@@ -27,13 +27,14 @@ const SYMBOL_TO_BINANCE: Record<Symbol, string> = {
 interface PositionCardProps {
   trade: Trade;
   price: number | null;
-  onClose: (tradeId: string) => void;
+  balance: number;
+  onClose: (tradeId: string) => Promise<void>;
   onAddMargin: (tradeId: string, amount: number) => Promise<void>;
   onShowPoster: (trade: Trade) => void;
-  loading: boolean;
 }
 
-function PositionCard({ trade, price, onClose, onAddMargin, onShowPoster, loading }: PositionCardProps) {
+function PositionCard({ trade, price, balance, onClose, onAddMargin, onShowPoster }: PositionCardProps) {
+  const [closing, setClosing] = useState(false);
   const [showMarginForm, setShowMarginForm] = useState(false);
   const [marginAmount, setMarginAmount] = useState("");
   const [marginLoading, setMarginLoading] = useState(false);
@@ -123,9 +124,9 @@ function PositionCard({ trade, price, onClose, onAddMargin, onShowPoster, loadin
         </p>
       )}
 
-      {/* Margin / Liq row */}
+      {/* Margin / Balance / Liq row */}
       <div className="flex justify-between items-center text-xs text-zinc-500 mb-4">
-        <span>Margin: ${trade.margin}</span>
+        <span>Margin: ${trade.margin} | Bal: ${balance.toLocaleString("en-US", { maximumFractionDigits: 2 })}</span>
         <span
           className={
             isNearLiq ? "text-red-500 font-bold animate-pulse" : "text-zinc-500"
@@ -145,8 +146,11 @@ function PositionCard({ trade, price, onClose, onAddMargin, onShowPoster, loadin
       {/* Action buttons */}
       <div className="flex gap-2">
         <button
-          onClick={() => onClose(trade.id)}
-          disabled={loading || trade.status === "liquidated"}
+          onClick={async () => {
+            setClosing(true);
+            try { await onClose(trade.id); } finally { setClosing(false); }
+          }}
+          disabled={closing || trade.status === "liquidated"}
           className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 ${
             trade.status === "liquidated"
               ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
@@ -155,7 +159,7 @@ function PositionCard({ trade, price, onClose, onAddMargin, onShowPoster, loadin
               : "bg-neon-orange text-arena-bg glow-orange-intense hover:brightness-110"
           } disabled:opacity-50`}
         >
-          {loading
+          {closing
             ? "Closing..."
             : trade.status === "liquidated"
             ? "Position Liquidated"
@@ -499,7 +503,7 @@ export default function TradingPage() {
   const firstOpenTrade = openTrades.find((t) => t.status === "open") ?? null;
 
   return (
-    <main className="flex flex-col min-h-screen px-4 pt-4 safe-bottom">
+    <main className="flex flex-col min-h-screen px-4 pt-4 safe-bottom overflow-x-hidden">
       {/* ── Header ── */}
       <header className="flex items-center justify-between mb-4">
         <div>
@@ -513,40 +517,40 @@ export default function TradingPage() {
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-shrink-0">
           <a
             href="/tournaments"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Tournaments
           </a>
           <a
             href="/leaderboard"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Leaderboard
           </a>
           <a
             href="/history"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             History
           </a>
           <a
             href="/achievements"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Achievements
           </a>
           <a
             href="/referral"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Referral
           </a>
           <a
             href="/alerts"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
           >
             Alerts
           </a>
@@ -741,13 +745,13 @@ export default function TradingPage() {
               key={trade.id}
               trade={trade}
               price={price}
+              balance={balance}
               onClose={handleCloseTrade}
               onAddMargin={handleAddMargin}
               onShowPoster={(t) => {
                 setLastClosedTrade(t);
                 setShowPoster(true);
               }}
-              loading={loading}
             />
           ))}
         </div>
