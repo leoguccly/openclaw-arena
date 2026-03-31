@@ -45,7 +45,7 @@ export default function StreakWidget() {
           return;
         }
 
-        const data = res.data as DailyClaimResult;
+        const data = (res.data?.data ?? res.data) as DailyClaimResult;
         setResult(data);
 
         // If reward was freshly claimed (not already_claimed), show popup

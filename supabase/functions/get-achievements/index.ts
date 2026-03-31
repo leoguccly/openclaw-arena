@@ -98,7 +98,6 @@ serve(async (req: Request): Promise<Response> => {
     supabase
       .from("achievements")
       .select("*")
-      .order("category")
       .order("required_count"),
 
     supabase
