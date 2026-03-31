@@ -332,6 +332,11 @@ export default function TournamentsPage() {
     Record<string, number>
   >({});
 
+  // Redeem code state
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemResult, setRedeemResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   // ── Load tournaments ──
   const loadTournaments = useCallback(async () => {
     setLoading(true);
@@ -430,6 +435,38 @@ export default function TournamentsPage() {
     [joiningId]
   );
 
+  // ── Redeem code handler ──
+  async function handleRedeem() {
+    if (!redeemCode.trim() || redeemLoading) return;
+    setRedeemLoading(true);
+    setRedeemResult(null);
+    try {
+      const res = await supabase.functions.invoke("redeem-code", {
+        body: { code: redeemCode.trim() },
+      });
+      if (res.error) {
+        setRedeemResult({ ok: false, msg: res.error.message || "Failed to redeem code." });
+      } else {
+        const data = res.data?.data ?? res.data;
+        if (data?.error) {
+          setRedeemResult({ ok: false, msg: data.message ?? "Invalid code." });
+        } else {
+          setRedeemResult({ ok: true, msg: `Joined "${data.tournament_name}"!` });
+          setRedeemCode("");
+          if (data.tournament_id) {
+            setJoinedIds((prev) => new Set([...prev, data.tournament_id]));
+          }
+          window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+          loadTournaments(); // Refresh list
+        }
+      }
+    } catch {
+      setRedeemResult({ ok: false, msg: "Network error. Try again." });
+    } finally {
+      setRedeemLoading(false);
+    }
+  }
+
   // ── Toggle expand ──
   const handleToggleExpand = useCallback((id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -460,6 +497,34 @@ export default function TournamentsPage() {
           Trade
         </a>
       </header>
+
+      {/* ── Redeem Code ── */}
+      <div className="arena-card p-4 mb-4">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-2">
+          🎫 Enter Code
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={redeemCode}
+            onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+            placeholder="ALPHA-XXXX-XXXX"
+            className="flex-1 bg-arena-bg border border-arena-border rounded-xl px-3 py-2.5 text-white text-sm font-mono uppercase tracking-wider focus:outline-none focus:border-neon-green"
+          />
+          <button
+            onClick={handleRedeem}
+            disabled={redeemLoading || !redeemCode.trim()}
+            className="px-5 py-2.5 rounded-xl bg-neon-green text-arena-bg font-bold text-sm active:scale-95 disabled:opacity-50"
+          >
+            {redeemLoading ? "..." : "Redeem"}
+          </button>
+        </div>
+        {redeemResult && (
+          <p className={`text-xs mt-2 ${redeemResult.ok ? "text-neon-green" : "text-neon-orange"}`}>
+            {redeemResult.ok ? "✅ " : "❌ "}{redeemResult.msg}
+          </p>
+        )}
+      </div>
 
       {/* ── Tabs ── */}
       <div className="flex gap-2 mb-4">
