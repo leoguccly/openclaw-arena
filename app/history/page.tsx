@@ -72,31 +72,38 @@ function StatsBar({ stats, loading }: { stats: AggregateStats | null; loading: b
 
   if (!stats) return null;
 
+  // Safe number conversion — PostgreSQL NUMERIC comes as string sometimes
+  const tc = Number(stats.total_closed) || 0;
+  const wr = stats.win_rate != null ? Number(stats.win_rate) : null;
+  const cp = stats.cumulative_pnl != null ? Number(stats.cumulative_pnl) : null;
+  const bp = stats.best_trade_pnl != null ? Number(stats.best_trade_pnl) : null;
+  const wp = stats.worst_trade_pnl != null ? Number(stats.worst_trade_pnl) : null;
+
   const statItems: Array<{ label: string; value: string; positive?: boolean | null }> = [
     {
       label: "Trades",
-      value: String(stats.total_closed),
+      value: String(tc),
       positive: null,
     },
     {
       label: "Win Rate",
-      value: fmtWinRate(stats.win_rate),
-      positive: stats.win_rate !== null ? stats.win_rate >= 0.5 : null,
+      value: wr !== null && !isNaN(wr) ? `${(wr * 100).toFixed(1)}%` : "—",
+      positive: wr !== null ? wr >= 0.5 : null,
     },
     {
       label: "Total PnL",
-      value: fmtPnlStat(stats.cumulative_pnl),
-      positive: stats.cumulative_pnl !== null ? stats.cumulative_pnl >= 0 : null,
+      value: cp !== null && !isNaN(cp) ? (cp >= 0 ? `+${cp.toFixed(2)}` : cp.toFixed(2)) : "—",
+      positive: cp !== null ? cp >= 0 : null,
     },
     {
       label: "Best",
-      value: fmtPnlStat(stats.best_trade_pnl),
-      positive: stats.best_trade_pnl !== null ? stats.best_trade_pnl >= 0 : null,
+      value: bp !== null && !isNaN(bp) ? (bp >= 0 ? `+${bp.toFixed(2)}` : bp.toFixed(2)) : "—",
+      positive: bp !== null ? bp >= 0 : null,
     },
     {
       label: "Worst",
-      value: fmtPnlStat(stats.worst_trade_pnl),
-      positive: stats.worst_trade_pnl !== null ? stats.worst_trade_pnl >= 0 : null,
+      value: wp !== null && !isNaN(wp) ? (wp >= 0 ? `+${wp.toFixed(2)}` : wp.toFixed(2)) : "—",
+      positive: wp !== null ? wp >= 0 : null,
     },
   ];
 
