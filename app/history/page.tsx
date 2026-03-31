@@ -435,9 +435,21 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-3 pb-4">
-          {trades.map((trade) => (
-            <TradeRow key={trade.id} trade={trade} />
-          ))}
+          {/* DEBUG: show raw first trade data */}
+          <div className="arena-card p-2 text-xs text-zinc-500 font-mono break-all mb-2">
+            DEBUG: {JSON.stringify(trades[0]).slice(0, 300)}
+          </div>
+          {trades.map((trade) => {
+            try {
+              return <TradeRow key={trade.id ?? Math.random()} trade={trade} />;
+            } catch (e) {
+              return (
+                <div key={Math.random()} className="arena-card p-2 text-xs text-red-500">
+                  Render error: {String(e)} | Data: {JSON.stringify(trade).slice(0, 200)}
+                </div>
+              );
+            }
+          })}
 
           {/* Infinite scroll sentinel */}
           <div ref={loaderRef} className="h-4" />
