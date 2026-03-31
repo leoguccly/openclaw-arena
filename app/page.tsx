@@ -505,57 +505,39 @@ export default function TradingPage() {
   return (
     <main className="flex flex-col min-h-screen px-4 pt-4 safe-bottom overflow-x-hidden">
       {/* ── Header ── */}
-      <header className="flex items-center justify-between mb-4">
-        <div>
+      <header className="mb-2">
+        <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold tracking-tight">
             <span className="text-neon-green text-glow-green">Alpha</span>
             <span className="text-zinc-500 text-sm ml-1">Arena</span>
           </h1>
           {tgUser && (
-            <p className="text-zinc-500 text-xs mt-0.5">
+            <p className="text-zinc-500 text-xs">
               Welcome, {tgUser.first_name}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide flex-shrink-0">
-          <a
-            href="/tournaments"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            Tournaments
-          </a>
-          <a
-            href="/leaderboard"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            Leaderboard
-          </a>
-          <a
-            href="/history"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            History
-          </a>
-          <a
-            href="/achievements"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            Achievements
-          </a>
-          <a
-            href="/referral"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            Referral
-          </a>
-          <a
-            href="/alerts"
-            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap"
-          >
-            Alerts
-          </a>
-        </div>
       </header>
+
+      {/* ── Nav bar (horizontally scrollable) ── */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-2 -mx-4 px-4" style={{ WebkitOverflowScrolling: "touch" }}>
+        {[
+          { href: "/tournaments", label: "Tournaments" },
+          { href: "/leaderboard", label: "Leaderboard" },
+          { href: "/history", label: "History" },
+          { href: "/achievements", label: "Achievements" },
+          { href: "/referral", label: "Referral" },
+          { href: "/alerts", label: "Alerts" },
+        ].map((nav) => (
+          <a
+            key={nav.href}
+            href={nav.href}
+            className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            {nav.label}
+          </a>
+        ))}
+      </div>
 
       {/* ── OpenClaw Status Widget ── */}
       <OpenClawWidget />
