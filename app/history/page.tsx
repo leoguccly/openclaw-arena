@@ -242,28 +242,226 @@ function TradeRow({ trade }: { trade: TradeHistoryItem }) {
 // ── Main Page ─────────────────────────────────────────────────
 
 export default function HistoryPage() {
-  const [rawDebug, setRawDebug] = useState<string>("loading...");
+  const [trades, setTrades]               = useState<TradeHistoryItem[]>([]);
+  const [stats, setStats]                 = useState<AggregateStats | null>(null);
+  const [statsLoading, setStatsLoading]   = useState<boolean>(true);
+  const [loading, setLoading]             = useState<boolean>(true);
+  const [loadingMore, setLoadingMore]     = useState<boolean>(false);
+  const [hasMore, setHasMore]             = useState<boolean>(true);
+  const [cursor, setCursor]               = useState<string | null>(null);
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");
+  const [symbolFilter, setSymbolFilter]   = useState<SymbolFilter>("all");
+  const [error, setError]                 = useState<string>("");
 
+  const loaderRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Load stats ────────────────────────────────────────────────
   useEffect(() => {
-    async function test() {
+    async function loadStats() {
+      setStatsLoading(true);
       try {
         const res = await supabase.functions.invoke("get-trade-history", {
-          body: { limit: 3 },
+          body: { stats_only: true },
         });
-        setRawDebug(JSON.stringify({ error: res.error?.message, dataKeys: res.data ? Object.keys(res.data) : null, sample: JSON.stringify(res.data).slice(0, 500) }, null, 2));
-      } catch (e) {
-        setRawDebug("fetch error: " + String(e));
+        const statsPayload = res.data?.data ?? res.data;
+        if (!res.error && statsPayload?.stats) {
+          setStats(statsPayload.stats as AggregateStats);
+        }
+      } catch {
+        // Non-critical — skip
+      } finally {
+        setStatsLoading(false);
       }
     }
-    test();
+    loadStats();
   }, []);
 
-  return (
-    <main className="p-4">
-      <a href="/" className="text-neon-green text-xs">← Back</a>
-      <h1 className="text-white text-lg font-bold mt-2 mb-4">Trade History Debug</h1>
-      <pre className="text-zinc-400 text-xs font-mono whitespace-pre-wrap break-all bg-zinc-900 p-3 rounded-xl">{rawDebug}</pre>
-    </main>
+  // ── Load trades (resets on filter change) ─────────────────────
+  const loadTrades = useCallback(
+    async (nextCursor: string | null, append: boolean) => {
+      if (!append) {
+        setLoading(true);
+        setError("");
+      } else {
+        setLoadingMore(true);
+      }
+
+      try {
+        const body: Record<string, unknown> = {
+          limit: PAGE_SIZE,
+        };
+        if (nextCursor)                 body.cursor        = nextCursor;
+        if (statusFilter !== "all")     body.status        = statusFilter;
+        if (symbolFilter !== "all")     body.symbol        = `${symbolFilter}/USDT`;
+
+        const res = await supabase.functions.invoke("get-trade-history", { body });
+
+        if (res.error) {
+          setError("Failed to load trade history.");
+          return;
+        }
+
+        const payload = res.data?.data ?? res.data;
+        const items   = (payload?.trades ?? []) as TradeHistoryItem[];
+        const nextCur = (payload?.next_cursor ?? null) as string | null;
+
+        setTrades((prev) => (append ? [...prev, ...items] : items));
+        setCursor(nextCur);
+        setHasMore(nextCur !== null);
+      } catch {
+        setError("Network error. Pull to refresh.");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [statusFilter, symbolFilter]
   );
 
+  // Reset + reload when filters change
+  useEffect(() => {
+    setCursor(null);
+    setHasMore(true);
+    loadTrades(null, false);
+  }, [loadTrades]);
+
+  // ── Infinite scroll via IntersectionObserver ──────────────────
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
+          loadTrades(cursor, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [cursor, hasMore, loadingMore, loading, loadTrades]);
+
+  // ── Filter pills ──────────────────────────────────────────────
+
+  const statusFilters: Array<{ key: StatusFilter; label: string }> = [
+    { key: "all",         label: "All"       },
+    { key: "closed",      label: "Closed"    },
+    { key: "liquidated",  label: "Liquidated"},
+  ];
+
+  const symbolFilters: Array<{ key: SymbolFilter; label: string }> = [
+    { key: "all",  label: "All" },
+    { key: "BTC",  label: "BTC" },
+    { key: "ETH",  label: "ETH" },
+  ];
+
+  return (
+    <main className="flex flex-col min-h-screen px-4 pt-4 safe-bottom">
+      {/* ── Header ── */}
+      <header className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-lg font-bold">
+            <span className="text-neon-green text-glow-green">Trade</span>
+            <span className="text-white ml-1">History</span>
+          </h1>
+          <p className="text-zinc-500 text-xs mt-0.5">Your trading journal</p>
+        </div>
+        <a
+          href="/"
+          className="text-xs text-zinc-400 border border-arena-border rounded-lg px-3 py-1.5 hover:border-neon-green hover:text-neon-green transition-colors"
+        >
+          ← Back
+        </a>
+      </header>
+
+      {/* ── Aggregate Stats ── */}
+      <StatsBar stats={stats} loading={statsLoading} />
+
+      {/* ── Filters ── */}
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1 no-scrollbar">
+        {statusFilters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setStatusFilter(f.key)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              statusFilter === f.key
+                ? "bg-neon-green/10 text-neon-green border border-neon-green/30"
+                : "text-zinc-500 border border-arena-border hover:border-zinc-600"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+        <span className="text-zinc-700 self-center mx-1">|</span>
+        {symbolFilters.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setSymbolFilter(f.key)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              symbolFilter === f.key
+                ? "bg-neon-green/10 text-neon-green border border-neon-green/30"
+                : "text-zinc-500 border border-arena-border hover:border-zinc-600"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Error ── */}
+      {error && (
+        <div className="arena-card border-neon-orange/30 p-3 mb-4 text-neon-orange text-sm text-center">
+          {error}
+        </div>
+      )}
+
+      {/* ── Trade List ── */}
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <div
+              key={i}
+              className="arena-card p-4 h-20 animate-pulse bg-zinc-900/50"
+            />
+          ))}
+        </div>
+      ) : trades.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-4xl mb-4">📜</p>
+          <p className="text-zinc-400 text-sm font-medium">No trades yet</p>
+          <p className="text-zinc-600 text-xs mt-1">
+            Your closed and liquidated positions will appear here.
+          </p>
+          <a
+            href="/"
+            className="mt-6 px-6 py-2.5 rounded-xl text-sm font-bold bg-neon-green text-arena-bg glow-green-intense transition-all active:scale-95"
+          >
+            Start Trading
+          </a>
+        </div>
+      ) : (
+        <div className="space-y-3 pb-4">
+          {trades.map((trade) => (
+            <TradeRow key={trade.id} trade={trade} />
+          ))}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={loaderRef} className="h-4" />
+
+          {loadingMore && (
+            <div className="text-center py-4">
+              <p className="text-zinc-600 text-xs animate-pulse">Loading more...</p>
+            </div>
+          )}
+
+          {!hasMore && trades.length > 0 && (
+            <p className="text-center text-zinc-700 text-xs py-4">
+              All {trades.length} trades loaded
+            </p>
+          )}
+        </div>
+      )}
+    </main>
+  );
 }
