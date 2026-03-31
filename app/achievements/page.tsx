@@ -184,8 +184,12 @@ export default function AchievementsPage() {
         const earned = (payload.earned ?? []) as Achievement[];
         const inProgress = (payload.in_progress ?? []) as Achievement[];
         const locked = (payload.locked ?? []) as Achievement[];
-        // Merge into a single flat array for the categorise() function
-        setAchievements([...earned, ...inProgress, ...locked]);
+        // Merge into a single flat array, hide AI-related achievements
+        const HIDDEN_ACHIEVEMENTS = new Set(["ACH-001"]); // Claw Crusher (beat AI)
+        const all = [...earned, ...inProgress, ...locked].filter(
+          (a) => !HIDDEN_ACHIEVEMENTS.has(a.id)
+        );
+        setAchievements(all);
       } catch {
         setError("Network error. Try again.");
       } finally {

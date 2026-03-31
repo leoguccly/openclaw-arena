@@ -16,6 +16,7 @@ export default function LeaderboardPage() {
       const { data, error } = await supabase
         .from("leaderboard_view")
         .select("display_name, username, is_human, roi, rank")
+        .eq("is_human", true)
         .order("rank", { ascending: true })
         .limit(50);
 
@@ -78,10 +79,8 @@ export default function LeaderboardPage() {
                     {rankDisplay}
                   </span>
 
-                  {/* Species icon */}
-                  <span className="text-base" title={entry.is_human ? "Human" : "Alpha Agent"}>
-                    {entry.is_human ? "👤" : "🦞"}
-                  </span>
+                  {/* Player icon */}
+                  <span className="text-base" title="Trader">👤</span>
 
                   {/* Name */}
                   <div>
