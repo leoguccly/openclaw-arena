@@ -249,8 +249,9 @@ export default function HistoryPage() {
         const res = await supabase.functions.invoke("get-trade-history", {
           body: { stats_only: true },
         });
-        if (!res.error && res.data?.stats) {
-          setStats(res.data.stats as AggregateStats);
+        const statsPayload = res.data?.data ?? res.data;
+        if (!res.error && statsPayload?.stats) {
+          setStats(statsPayload.stats as AggregateStats);
         }
       } catch {
         // Non-critical — skip
@@ -286,8 +287,9 @@ export default function HistoryPage() {
           return;
         }
 
-        const items   = (res.data?.trades ?? []) as TradeHistoryItem[];
-        const nextCur = (res.data?.next_cursor ?? null) as string | null;
+        const payload = res.data?.data ?? res.data;
+        const items   = (payload?.trades ?? []) as TradeHistoryItem[];
+        const nextCur = (payload?.next_cursor ?? null) as string | null;
 
         setTrades((prev) => (append ? [...prev, ...items] : items));
         setCursor(nextCur);

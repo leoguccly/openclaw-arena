@@ -231,6 +231,7 @@ export default function TradingPage() {
   const [priceHistory, setPriceHistory] = useState<number[]>([]);
   const [accessToken, setAccessToken] = useState<string>("");
   const [_debugInfo, setDebugInfo] = useState<string>("");
+  const [activeTournament, setActiveTournament] = useState<{ name: string; status: string } | null>(null);
 
   const SPARKLINE_MAX_POINTS = 50;
 
@@ -317,6 +318,24 @@ export default function TradingPage() {
         } catch (e) {
           dbg += `tradeERR=${e}`;
         }
+
+        // 加载参赛状态
+        try {
+          const tpRes = await fetch(
+            `${baseUrl}/rest/v1/tournament_participants?select=tournament_id,tournaments(name,status)&order=joined_at.desc&limit=1`,
+            { headers }
+          );
+          const tpData = await tpRes.json();
+          if (Array.isArray(tpData) && tpData.length > 0) {
+            const t = (tpData[0] as Record<string, unknown>).tournaments as { name: string; status: string } | null;
+            if (t && (t.status === "upcoming" || t.status === "active")) {
+              setActiveTournament(t);
+            }
+          }
+        } catch {
+          // non-critical
+        }
+
         setDebugInfo(dbg);
       }
 
@@ -537,6 +556,28 @@ export default function TradingPage() {
           </a>
         ))}
       </div>
+
+      {/* ── Tournament Status Banner ── */}
+      {activeTournament && (
+        <a href="/tournaments" className="arena-card px-4 py-3 mb-3 flex items-center justify-between border-neon-green/20 hover:border-neon-green/40 transition-colors">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🏆</span>
+            <div>
+              <p className="text-xs font-bold text-white">{activeTournament.name}</p>
+              <p className="text-xs text-zinc-500">
+                {activeTournament.status === "active" ? "Live now — you're competing!" : "Starts soon — you're registered!"}
+              </p>
+            </div>
+          </div>
+          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+            activeTournament.status === "active"
+              ? "bg-neon-green/15 text-neon-green"
+              : "bg-zinc-800 text-zinc-400"
+          }`}>
+            {activeTournament.status === "active" ? "LIVE" : "SOON"}
+          </span>
+        </a>
+      )}
 
       {/* ── OpenClaw Status Widget ── */}
       <OpenClawWidget />
