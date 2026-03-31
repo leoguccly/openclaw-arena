@@ -123,6 +123,7 @@ function StatsBar({ stats, loading }: { stats: AggregateStats | null; loading: b
 // ── Trade Row ─────────────────────────────────────────────────
 
 function TradeRow({ trade }: { trade: TradeHistoryItem }) {
+  if (!trade || !trade.symbol || !trade.direction) return null;
   const isLong      = trade.direction === "long";
   const isLiq       = trade.status === "liquidated";
   const hasPnl      = trade.realised_pnl !== null;
