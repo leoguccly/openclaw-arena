@@ -527,7 +527,6 @@ export default function TradingPage() {
           { href: "/history", label: "History" },
           { href: "/achievements", label: "Achievements" },
           { href: "/referral", label: "Referral" },
-          { href: "/alerts", label: "Alerts" },
         ].map((nav) => (
           <a
             key={nav.href}
