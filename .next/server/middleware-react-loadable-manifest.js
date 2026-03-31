@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"components/CyberPoster.tsx -> html2canvas\":{\"id\":\"components/CyberPoster.tsx -> html2canvas\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_html2canvas_dist_html2canvas_js.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST='{"components/CyberPoster.tsx -> html2canvas":{"id":1173,"files":["static/chunks/ad2866b8.989f74a0aef466bf.js"]}}';

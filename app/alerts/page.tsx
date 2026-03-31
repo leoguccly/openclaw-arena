@@ -124,7 +124,7 @@ function NewAlertForm({
       if (res.error) {
         setFormError(res.error.message || "Failed to create alert.");
       } else {
-        const newAlert = res.data as PriceAlert;
+        const newAlert = (res.data?.data ?? res.data) as PriceAlert;
         onCreated(newAlert);
         setTargetPrice("");
       }
@@ -241,8 +241,9 @@ export default function AlertsPage() {
       if (res.error) {
         setError(res.error.message || "Failed to load alerts.");
       } else {
-        const data = res.data as PriceAlert[];
-        setAlerts(Array.isArray(data) ? data : []);
+        const raw = res.data?.data ?? res.data;
+        const data = Array.isArray(raw) ? raw : (raw?.alerts ?? []);
+        setAlerts(data as PriceAlert[]);
       }
     } catch {
       setError("Network error. Please try again.");
