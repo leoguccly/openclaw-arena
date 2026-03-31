@@ -12,18 +12,24 @@ import type { TradeHistoryItem, AggregateStats } from "@/lib/types";
 
 // ── Helpers ───────────────────────────────────────────────────
 
-function fmtPrice(p: number): string {
-  return p >= 1000
-    ? p.toLocaleString("en-US", { maximumFractionDigits: 2 })
-    : p.toFixed(4);
+function fmtPrice(p: number | string | null | undefined): string {
+  const n = Number(p);
+  if (isNaN(n)) return "—";
+  return n >= 1000
+    ? n.toLocaleString("en-US", { maximumFractionDigits: 2 })
+    : n.toFixed(4);
 }
 
-function fmtPnl(p: number): string {
-  return p >= 0 ? `+${p.toFixed(2)}` : p.toFixed(2);
+function fmtPnl(p: number | string | null | undefined): string {
+  const n = Number(p);
+  if (isNaN(n)) return "—";
+  return n >= 0 ? `+${n.toFixed(2)}` : n.toFixed(2);
 }
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
